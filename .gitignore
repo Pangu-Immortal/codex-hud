@@ -1,0 +1,12 @@
+# 功能：忽略 Swift Package 与 macOS 本地产物。
+# 函数简介：避免构建缓存、系统文件与生成截图污染仓库。
+
+.DS_Store
+.build/
+DerivedData/
+Package.resolved
+*.swp
+*.xcworkspace
+*.xcodeproj/project.xcworkspace
+docs/images/generated/
+*.png.tmp

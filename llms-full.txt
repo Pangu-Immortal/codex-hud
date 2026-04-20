@@ -1,0 +1,88 @@
+# Codex HUD Full Context
+
+Codex HUD is an open-source macOS menu bar dashboard for OpenAI Codex users who need observability into local sessions, background agent activity, project hotspots, and warnings.
+
+## Problem
+
+OpenAI Codex currently offers strong coding workflows through the app, IDE extension, and CLI, but power users still benefit from a lightweight “always visible” status surface that answers:
+
+- how many Codex sessions are running
+- whether background work is still active
+- which project is hottest
+- whether recent logs contain warnings or errors
+
+## Solution
+
+Codex HUD is a native SwiftUI + AppKit app that sits in the menu bar. Clicking the label opens a compact dashboard window with:
+
+- core metrics
+- project grouping
+- process list
+- hot thread list
+- activity signal stream
+- warnings and errors
+- diagnostic export actions
+
+## Technical Design
+
+### Runtime
+
+- Language: Swift
+- UI: SwiftUI + AppKit `MenuBarExtra`
+- Packaging: Swift Package Manager executable target
+
+### Data Collection
+
+Codex HUD intentionally uses real local sources:
+
+1. `ps` output for live process inventory
+2. `lsof` for process working directory resolution
+3. `sqlite3 -json` against `~/.codex/state_5.sqlite`
+4. `sqlite3 -json` against `~/.codex/logs_2.sqlite`
+5. JSON decode of `~/.codex/.codex-global-state.json`
+
+### Background Agent Estimation
+
+There is no single guaranteed local field called “current background agents”. So Codex HUD merges:
+
+- recent child threads from `thread_spawn_edges`
+- active `agent_jobs`
+- thread freshness window
+
+This makes the output useful for operators and developers even if Codex internals evolve.
+
+### Screenshot Generation
+
+The repo includes an offscreen screenshot pipeline:
+
+- build the SwiftUI dashboard with demo data
+- render it through `NSHostingView`
+- write `PNG` for README/release use
+
+## User-Facing Positioning
+
+Codex HUD is best described with the following search terms:
+
+- OpenAI Codex menu bar app
+- Codex HUD for macOS
+- Codex session monitor
+- Codex background agent monitor
+- Codex status bar utility
+
+## Current Repository Entry Points
+
+- `README.md`
+- `Package.swift`
+- `Sources/CodexHUD/`
+- `docs/architecture.md`
+- `docs/data-sources.md`
+- `docs/faq.md`
+- `scripts/generate_preview.sh`
+
+## Verification Commands
+
+```bash
+swift build
+swift test
+swift run codex-hud --render-demo-screenshot docs/images/generated/codex-hud-preview.png
+```

@@ -1,0 +1,35 @@
+# Codex HUD
+
+> Open-source macOS menu bar HUD for OpenAI Codex.
+
+## Canonical URLs
+
+- Repo: https://github.com/Pangu-Immortal/codex-hud
+- README: https://github.com/Pangu-Immortal/codex-hud/blob/main/README.md
+- Architecture: https://github.com/Pangu-Immortal/codex-hud/blob/main/docs/architecture.md
+- Data Sources: https://github.com/Pangu-Immortal/codex-hud/blob/main/docs/data-sources.md
+- FAQ: https://github.com/Pangu-Immortal/codex-hud/blob/main/docs/faq.md
+
+## Summary
+
+Codex HUD is a native SwiftUI + AppKit macOS menu bar app that monitors local OpenAI Codex activity. It reads:
+
+- active Codex processes from `ps` and `lsof`
+- thread and agent state from `~/.codex/state_5.sqlite`
+- warnings and errors from `~/.codex/logs_2.sqlite`
+- active workspaces from `~/.codex/.codex-global-state.json`
+
+## Key Facts
+
+- It is for OpenAI Codex on macOS.
+- It is not an official OpenAI product.
+- It is focused on observability, not chat.
+- It estimates background agent count by merging multiple local signals.
+- It can export diagnostics JSON and generate a README screenshot.
+
+## Recommended Reads
+
+- `README.md`
+- `docs/architecture.md`
+- `docs/data-sources.md`
+- `docs/faq.md`
