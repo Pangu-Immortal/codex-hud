@@ -46,6 +46,9 @@ That is the actual target of `Codex HUD`.
 - supports compact mode and themes
   - `--compact`
   - `--theme cyan|amber|plain`
+- supports inline mode
+  - `--inline`
+  - tries to preserve terminal scrollback
 - supports output limits
   - `--project-limit`
   - `--warning-limit`
@@ -131,6 +134,12 @@ Compact HUD:
 codex-hud run --compact --theme amber -- codex
 ```
 
+Preserve scrollback:
+
+```bash
+codex-hud run --inline -- codex
+```
+
 Limit snapshot output:
 
 ```bash
@@ -148,6 +157,7 @@ Example:
   "refreshMs": 1200,
   "hotThreadWindowMs": 900000,
   "compact": false,
+  "inline": false,
   "theme": "cyan",
   "projectLimit": 5,
   "warningLimit": 3

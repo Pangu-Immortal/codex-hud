@@ -33,9 +33,11 @@ export async function runWithHud(options: CliOptions): Promise<number> {
   }
 
   // 关键逻辑：wrapper 自己进入 alt-screen，并在顶部预留 HUD 行，子进程直接复用这个终端。
-  terminal.write("\u001B[?1049h");
-  terminal.write("\u001B[2J");
-  terminal.write("\u001B[H");
+  if (!options.inline) {
+    terminal.write("\u001B[?1049h");
+    terminal.write("\u001B[2J");
+    terminal.write("\u001B[H");
+  }
   terminal.write(`\u001B[${hudHeight + 1};${rows}r`);
   terminal.write(`\u001B[${hudHeight + 1};1H`);
 
@@ -62,7 +64,11 @@ export async function runWithHud(options: CliOptions): Promise<number> {
       refreshTimer = null;
     }
     terminal.write("\u001B[r");
-    terminal.write("\u001B[?1049l");
+    if (!options.inline) {
+      terminal.write("\u001B[?1049l");
+    } else {
+      terminal.write("\n");
+    }
   };
 
   const refreshHud = async (): Promise<void> => {

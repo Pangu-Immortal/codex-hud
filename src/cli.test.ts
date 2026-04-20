@@ -14,6 +14,7 @@ test("parseCli 能识别 snapshot json 参数", () => {
   assert.equal(parsed.command, "snapshot");
   assert.equal(parsed.rawJson, true);
   assert.equal(parsed.theme, "cyan");
+  assert.equal(parsed.inline, false);
 });
 
 test("parseCli 能保留 run 子命令", () => {
@@ -58,4 +59,10 @@ test("compact 模式返回 2 行 HUD", () => {
     projectLimit: 3,
     warningLimit: 2
   }), 2);
+});
+
+test("parseCli 能识别 inline 与主题参数", () => {
+  const parsed = parseCli(["snapshot", "--inline", "--theme", "amber"]);
+  assert.equal(parsed.inline, true);
+  assert.equal(parsed.theme, "amber");
 });

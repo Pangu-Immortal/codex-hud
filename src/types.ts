@@ -11,6 +11,7 @@ export interface CliOptions {
   rawJson: boolean;
   childCommand: string[];
   compact: boolean;
+  inline: boolean;
   theme: HudTheme;
   projectLimit: number;
   warningLimit: number;
@@ -81,6 +82,7 @@ export interface HudConfigFile {
   refreshMs?: number;
   hotThreadWindowMs?: number;
   compact?: boolean;
+  inline?: boolean;
   theme?: HudTheme;
   projectLimit?: number;
   warningLimit?: number;

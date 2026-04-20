@@ -27,6 +27,7 @@ export function parseCli(argv: string[]): CliOptions {
   let rawJson = false;
   let childCommand: string[] = ["codex"];
   let compact = config.compact ?? false;
+  let inline = config.inline ?? false;
   let theme = config.theme ?? DEFAULT_THEME;
   let projectLimit = normalizePositiveNumber(config.projectLimit, DEFAULT_PROJECT_LIMIT);
   let warningLimit = normalizePositiveNumber(config.warningLimit, DEFAULT_WARNING_LIMIT);
@@ -78,6 +79,11 @@ export function parseCli(argv: string[]): CliOptions {
       continue;
     }
 
+    if (current === "--inline") {
+      inline = true;
+      continue;
+    }
+
     if (current === "--project-limit") {
       const nextValue = args.shift();
       if (!nextValue) {
@@ -122,6 +128,7 @@ export function parseCli(argv: string[]): CliOptions {
     rawJson,
     childCommand,
     compact,
+    inline,
     theme,
     projectLimit,
     warningLimit

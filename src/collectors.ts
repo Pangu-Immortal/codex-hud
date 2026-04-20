@@ -268,7 +268,7 @@ function buildProjects(
     .map((item) => ({
       path: item.path,
       name: path.basename(item.path) || item.path,
-      workspaceActive: activeWorkspaceSet.has(item.path),
+      workspaceActive: isWorkspaceActive(item.path, activeWorkspaceSet),
       interactiveSessions: item.interactiveSessions,
       hotThreads: item.hotThreads,
       backgroundAgents: item.backgroundAgents,
@@ -330,6 +330,11 @@ function collectActiveWorkspaceRoots(globalStatePath: string): string[] {
 }
 
 async function resolveWorkingDirectory(pid: number, command: string): Promise<string | null> {
+  const fromArgs = extractWorkingDirectoryFromArguments(command);
+  if (fromArgs) {
+    return fromArgs;
+  }
+
   const byProc = resolveWorkingDirectoryFromProc(pid);
   if (byProc) {
     return byProc;
@@ -341,6 +346,30 @@ async function resolveWorkingDirectory(pid: number, command: string): Promise<st
   }
 
   return extractCwdFromCommand(command);
+}
+
+function extractWorkingDirectoryFromArguments(command: string): string | null {
+  const tokens = tokenizeCommand(command);
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "-C" || token === "--cd") {
+      const nextValue = tokens[index + 1];
+      if (nextValue) {
+        return normalizeCandidatePath(nextValue);
+      }
+    }
+
+    if (token.startsWith("--cd=")) {
+      return normalizeCandidatePath(token.slice("--cd=".length));
+    }
+
+    if (token.startsWith("-C") && token.length > 2) {
+      return normalizeCandidatePath(token.slice(2));
+    }
+  }
+
+  return null;
 }
 
 function resolveWorkingDirectoryFromProc(pid: number): string | null {
@@ -385,6 +414,69 @@ function dedupeProcesses(processes: ProcessSnapshot[]): ProcessSnapshot[] {
     }
     return !item.command.toLowerCase().includes(`${path.sep}codex${path.sep}codex`);
   });
+}
+
+function tokenizeCommand(command: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index];
+
+    if ((char === '"' || char === "'") && quote === null) {
+      quote = char;
+      continue;
+    }
+
+    if (quote !== null && char === quote) {
+      quote = null;
+      continue;
+    }
+
+    if (quote === null && /\s/.test(char)) {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    if (char === "\\" && index + 1 < command.length) {
+      const nextChar = command[index + 1];
+      current += nextChar;
+      index += 1;
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length > 0) {
+    tokens.push(current);
+  }
+
+  return tokens;
+}
+
+function normalizeCandidatePath(candidate: string): string | null {
+  const trimmed = candidate.trim().replace(/^["']|["']$/g, "");
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return path.resolve(trimmed);
+}
+
+function isWorkspaceActive(targetPath: string, activeWorkspaceSet: Set<string>): boolean {
+  for (const workspaceRoot of activeWorkspaceSet) {
+    if (targetPath === workspaceRoot) {
+      return true;
+    }
+    if (targetPath.startsWith(`${workspaceRoot}${path.sep}`)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function createAccumulator(targetPath: string): ProjectAccumulator {

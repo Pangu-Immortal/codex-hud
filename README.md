@@ -46,6 +46,9 @@ codex
 - 支持紧凑模式与主题
   - `--compact`
   - `--theme cyan|amber|plain`
+- 支持 inline 模式
+  - `--inline`
+  - 尽量保留终端滚动历史
 - 支持输出限额
   - `--project-limit`
   - `--warning-limit`
@@ -132,6 +135,12 @@ npx tsx src/index.ts run -- --codex-home ~/.codex codex
 codex-hud run --compact --theme amber -- codex
 ```
 
+保留滚动历史：
+
+```bash
+codex-hud run --inline -- codex
+```
+
 限制快照输出：
 
 ```bash
@@ -149,6 +158,7 @@ codex-hud snapshot --project-limit 3 --warning-limit 2
   "refreshMs": 1200,
   "hotThreadWindowMs": 900000,
   "compact": false,
+  "inline": false,
   "theme": "cyan",
   "projectLimit": 5,
   "warningLimit": 3
