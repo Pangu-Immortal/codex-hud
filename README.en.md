@@ -2,147 +2,133 @@
 
 <div align="center">
 
-![OpenAI Codex HUD Visitor Count](https://count.getloli.com/get/@codex-hud?theme=rule34)
+![Codex HUD Visitor Count](https://count.getloli.com/get/@codex-hud?theme=rule34)
 
 <p>
   <b>If this project helps you, please <a href="https://github.com/Pangu-Immortal/codex-hud/stargazers">Star</a> the repo.</b>
 </p>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-macOS%2014%2B-black.svg)](https://www.apple.com/macos)
-[![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://www.swift.org)
-[![OpenAI Codex](https://img.shields.io/badge/OpenAI-Codex-10a37f.svg)](https://openai.com/codex)
-[![Menu Bar](https://img.shields.io/badge/UI-Menu%20Bar%20HUD-purple.svg)](https://developer.apple.com/documentation/swiftui/menubarextra)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-black.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933.svg)](https://nodejs.org)
+[![Codex CLI](https://img.shields.io/badge/OpenAI-Codex%20CLI-10a37f.svg)](https://openai.com/codex)
+[![Terminal HUD](https://img.shields.io/badge/UI-CLI%20HUD-purple.svg)](LICENSE)
 
 [简体中文](README.md) | [English](README.en.md)
 
 </div>
 
-> An open-source macOS menu bar HUD for OpenAI Codex. It turns local Codex sessions, background agents, hot threads, warning logs, and project activity into an always-visible operational panel.
+> A cross-platform terminal HUD built only for `Codex CLI`. It is not a menu bar app and not a desktop plugin. It wraps the `codex` command so the HUD stays at the top of the same terminal while Codex keeps running below it.
 
-<p align="center">
-  <img src="docs/images/generated/codex-hud-preview.png" alt="Codex HUD preview showing OpenAI Codex sessions, background agents, hot threads, warnings, and project cards" width="760" />
-</p>
+## What It Solves
 
-## What It Is
+If your only workflow is:
 
-If you use Codex heavily, the missing piece is often not another chat window. It is observability.
+```bash
+codex
+```
 
-`Codex HUD` is designed to answer questions like:
+then what you really want is:
 
-- How many Codex sessions are running on this Mac right now?
-- How much background agent work is still active?
-- Which project is hottest at the moment?
-- Did Codex emit `WARN` or `ERROR` logs recently?
-- Is the IDE extension `app-server` still alive?
+- a HUD directly inside the terminal
+- no context switch away from CLI
+- consistent behavior on macOS, Linux, and Windows
+- live visibility into session count, hot threads, estimated background agents, and warnings
 
-It lives in the same product category as Claude HUD, but targets OpenAI Codex on macOS.
+That is the actual target of `Codex HUD`.
 
-## Features
+## Current Capabilities
 
-- Native `SwiftUI + AppKit` menu bar HUD.
-- Counts live interactive Codex sessions from real running processes.
-- Estimates background agent workload from `thread_spawn_edges` and `agent_jobs`.
-- Reads hot threads and project activity from `~/.codex/state_5.sqlite`.
-- Reads recent `WARN / ERROR` logs from `~/.codex/logs_2.sqlite`.
-- Groups status by project path and active workspace roots.
-- Exports diagnostics JSON for issue reporting.
-- Generates a PNG preview for README and release assets.
-- Includes visual settings for refresh interval, hot thread window, project scope, warning filter, and display limits.
+- `codex-hud snapshot`
+  prints the current Codex status snapshot
+- `codex-hud run -- codex`
+  wraps an interactive Codex CLI session and keeps a HUD at the top of the terminal
+- reads real local Codex state
+  - `~/.codex/state_5.sqlite`
+  - `~/.codex/logs_2.sqlite`
+  - `~/.codex/log/*.log`
+  - current workspace
+- non-interactive commands bypass the HUD
+  - for example `codex --version`
 
-## Data Sources
-
-Codex HUD uses real local Codex state:
-
-- Process layer: `ps` + `lsof`
-- State layer: `~/.codex/state_5.sqlite`
-- Log layer: `~/.codex/logs_2.sqlite`
-- Workspace layer: `~/.codex/.codex-global-state.json`
-
-More detail:
-
-- [Architecture](docs/architecture.md)
-- [Data Sources](docs/data-sources.md)
-- [FAQ](docs/faq.md)
-
-## Install and Run
+## Install
 
 ### Requirements
 
-- macOS 14 or later
-- Xcode 16+ or the Swift toolchain bundled with Xcode
+- Node.js 20+
+- `codex` installed and available locally
 
-### Run Locally
+### Local Development
 
 ```bash
 git clone git@github.com:Pangu-Immortal/codex-hud.git
 cd codex-hud
-swift build
-swift run codex-hud
+npm install
+npm run build
 ```
 
-### Generate Preview
+## Usage
+
+### 1. Print a snapshot
 
 ```bash
-./scripts/generate_preview.sh
+npx tsx src/index.ts snapshot
 ```
 
-Or directly:
+JSON mode:
 
 ```bash
-swift run codex-hud --render-demo-screenshot docs/images/generated/codex-hud-preview.png
+npx tsx src/index.ts snapshot --json
 ```
 
-## Current Settings Support
+### 2. Wrap an interactive Codex session
 
-The app settings window currently supports:
+```bash
+npx tsx src/index.ts run -- codex
+```
 
-- refresh interval
-- hot thread window
-- project scope
-- warning filter
-- section display limits
-- custom Codex data directory override
+With an initial prompt:
+
+```bash
+npx tsx src/index.ts run -- codex "Analyze the current project"
+```
+
+With a custom `codex home`:
+
+```bash
+npx tsx src/index.ts run -- --codex-home ~/.codex codex
+```
+
+## Technical Boundary
+
+At the moment, `Codex CLI` does not expose a clearly documented native statusline plugin API like Claude Code. So this project uses a **wrapper / sidecar** approach instead of injecting directly into Codex internals.
+
+That means:
+
+- it is a terminal HUD
+- but not an official built-in Codex statusline API
+- it approximates that experience by reserving a HUD area at the top of the terminal
 
 ## Visitor Counter
 
-This repo includes a visitor counter, following the same convention used in my other projects:
+This repository uses the same visitor counter style as my other open-source projects:
 
 ```markdown
-![OpenAI Codex HUD Visitor Count](https://count.getloli.com/get/@codex-hud?theme=rule34)
+![Codex HUD Visitor Count](https://count.getloli.com/get/@codex-hud?theme=rule34)
 ```
 
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Pangu-Immortal/codex-hud&type=Date)](https://www.star-history.com/#Pangu-Immortal/codex-hud&Date)
 
-## GEO / LLM-Friendly Docs
-
-To improve retrieval quality for search engines, answer engines, and LLM-based systems, the repo also includes:
-
-- [llms.txt](llms.txt)
-- [llms-full.txt](llms-full.txt)
-- [FAQ](docs/faq.md)
-- [Architecture](docs/architecture.md)
-- [Data Sources](docs/data-sources.md)
-
-## SEO Keywords
-
-This repository is intentionally structured around discoverable terms such as:
-
-- OpenAI Codex menu bar tool
-- Codex HUD
-- Codex status bar
-- Codex background agent monitoring
-- Codex session monitor
-- Codex macOS utility
-
-## Development
+## Development Commands
 
 ```bash
-swift build
-swift test
-swift run codex-hud --refresh-seconds 3
+npm install
+npm run build
+npm test
+npm run snapshot
+npm run start
 ```
 
 ## License

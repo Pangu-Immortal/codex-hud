@@ -1,12 +1,16 @@
-# 功能：忽略 Swift Package 与 macOS 本地产物。
-# 函数简介：避免构建缓存、系统文件与生成截图污染仓库。
+# 功能：忽略 CLI HUD 的本地产物与敏感内部文件。
+# 函数简介：避免 Node 构建缓存、系统文件和内部计划泄露到仓库。
 
 .DS_Store
 .build/
-DerivedData/
-Package.resolved
 *.swp
-*.xcworkspace
-*.xcodeproj/project.xcworkspace
-docs/images/generated/
-*.png.tmp
+node_modules/
+dist/
+npm-debug.log*
+开发计划.md
+llms.txt
+llms-full.txt
+docs/architecture.md
+docs/data-sources.md
+docs/faq.md
+internal/

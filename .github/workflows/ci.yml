@@ -7,23 +7,32 @@ on:
   pull_request:
 
 jobs:
-  build-test:
-    runs-on: macos-15
+  cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select latest Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          xcode-version: latest-stable
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm install
 
       - name: Build
-        run: swift build
+        run: npm run build
 
       - name: Test
-        run: swift test
+        run: npm test
 
-      - name: Generate preview
-        run: swift run codex-hud --render-demo-screenshot docs/images/generated/ci-preview.png
+      - name: Snapshot Smoke Test
+        run: node dist/index.js snapshot --json

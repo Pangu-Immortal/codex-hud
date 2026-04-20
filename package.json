@@ -1,0 +1,31 @@
+{
+  "name": "codex-hud",
+  "version": "0.2.0",
+  "description": "Cross-platform terminal HUD wrapper for Codex CLI",
+  "license": "MIT",
+  "bin": {
+    "codex-hud": "dist/index.cjs"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs --target node20 --out-dir dist --clean",
+    "dev": "tsx src/index.ts",
+    "snapshot": "tsx src/index.ts snapshot",
+    "start": "tsx src/index.ts run -- codex",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "ps-list": "^9.0.0",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "@types/sql.js": "^1.4.9",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
