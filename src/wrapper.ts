@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 import { collectHudSnapshot } from "./collectors";
-import { HUD_HEIGHT, renderHud } from "./render";
+import { getHudHeight, renderHud } from "./render";
 import type { CliOptions } from "./types";
 
 export async function runWithHud(options: CliOptions): Promise<number> {
@@ -16,6 +16,13 @@ export async function runWithHud(options: CliOptions): Promise<number> {
     return await runPassthrough(command.file, command.args);
   }
 
+  const renderOptions = {
+    compact: options.compact,
+    theme: options.theme,
+    projectLimit: options.projectLimit,
+    warningLimit: options.warningLimit
+  };
+  const hudHeight = getHudHeight(renderOptions);
   const terminal = process.stdout;
   const input = process.stdin;
   const columns = terminal.columns || 120;
@@ -29,8 +36,8 @@ export async function runWithHud(options: CliOptions): Promise<number> {
   terminal.write("\u001B[?1049h");
   terminal.write("\u001B[2J");
   terminal.write("\u001B[H");
-  terminal.write(`\u001B[${HUD_HEIGHT + 1};${rows}r`);
-  terminal.write(`\u001B[${HUD_HEIGHT + 1};1H`);
+  terminal.write(`\u001B[${hudHeight + 1};${rows}r`);
+  terminal.write(`\u001B[${hudHeight + 1};1H`);
 
   const child = spawn(command.file, command.args, {
     cwd: process.cwd(),
@@ -61,13 +68,13 @@ export async function runWithHud(options: CliOptions): Promise<number> {
   const refreshHud = async (): Promise<void> => {
     try {
       const snapshot = await collectHudSnapshot(options.codexHome, options.hotThreadWindowMs, process.cwd());
-      const lines = renderHud(snapshot, terminal.columns || columns);
+      const lines = renderHud(snapshot, terminal.columns || columns, renderOptions);
       terminal.write("\u001B7");
       terminal.write("\u001B[1;1H");
-      for (let index = 0; index < HUD_HEIGHT; index += 1) {
+      for (let index = 0; index < hudHeight; index += 1) {
         terminal.write("\u001B[2K");
         terminal.write(lines[index] ?? "".padEnd(terminal.columns || columns, " "));
-        if (index < HUD_HEIGHT - 1) {
+        if (index < hudHeight - 1) {
           terminal.write("\n");
         }
       }
@@ -89,7 +96,7 @@ export async function runWithHud(options: CliOptions): Promise<number> {
 
   process.stdout.on("resize", () => {
     const nextRows = process.stdout.rows || rows;
-    terminal.write(`\u001B[${HUD_HEIGHT + 1};${nextRows}r`);
+    terminal.write(`\u001B[${hudHeight + 1};${nextRows}r`);
     void refreshHud();
   });
 

@@ -10,6 +10,10 @@ export interface CliOptions {
   hotThreadWindowMs: number;
   rawJson: boolean;
   childCommand: string[];
+  compact: boolean;
+  theme: HudTheme;
+  projectLimit: number;
+  warningLimit: number;
 }
 
 export interface ProcessSnapshot {
@@ -68,4 +72,23 @@ export interface HudSnapshot {
   projects: ProjectSnapshot[];
   processes: ProcessSnapshot[];
   warningEvents: WarningSnapshot[];
+}
+
+export type HudTheme = "cyan" | "amber" | "plain";
+
+export interface HudConfigFile {
+  codexHome?: string;
+  refreshMs?: number;
+  hotThreadWindowMs?: number;
+  compact?: boolean;
+  theme?: HudTheme;
+  projectLimit?: number;
+  warningLimit?: number;
+}
+
+export interface RenderOptions {
+  compact: boolean;
+  theme: HudTheme;
+  projectLimit: number;
+  warningLimit: number;
 }

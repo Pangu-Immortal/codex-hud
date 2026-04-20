@@ -4,11 +4,12 @@
  */
 
 import path from "node:path";
-import type { HudSnapshot } from "./types";
+import type { HudSnapshot, RenderOptions } from "./types";
 
-export const HUD_HEIGHT = 3;
+const FULL_HEIGHT = 3;
+const COMPACT_HEIGHT = 2;
 
-export function renderHud(snapshot: HudSnapshot, terminalColumns: number): string[] {
+export function renderHud(snapshot: HudSnapshot, terminalColumns: number, options: RenderOptions): string[] {
   const workspaceName = path.basename(snapshot.workspace) || snapshot.workspace;
   const statusText =
     ` Codex HUD | ${workspaceName} | 会话 ${snapshot.interactiveSessions}` +
@@ -25,18 +26,25 @@ export function renderHud(snapshot: HudSnapshot, terminalColumns: number): strin
     ? ` 最近工具: ${snapshot.recentTools.join(", ")} `
     : " 最近工具: none ";
 
+  if (options.compact) {
+    return [
+      applyStyle(fitLine(statusText, terminalColumns), options.theme, 0),
+      applyStyle(fitLine(recentThread, terminalColumns), options.theme, 1)
+    ];
+  }
+
   return [
-    applyStyle(fitLine(statusText, terminalColumns), 45),
-    applyStyle(fitLine(recentThread, terminalColumns), 39),
-    applyStyle(fitLine(recentTools, terminalColumns), 31)
+    applyStyle(fitLine(statusText, terminalColumns), options.theme, 0),
+    applyStyle(fitLine(recentThread, terminalColumns), options.theme, 1),
+    applyStyle(fitLine(recentTools, terminalColumns), options.theme, 2)
   ];
 }
 
-export function renderSnapshotText(snapshot: HudSnapshot): string {
-  const projectLines = snapshot.projects.slice(0, 5).map((item) =>
+export function renderSnapshotText(snapshot: HudSnapshot, options: RenderOptions): string {
+  const projectLines = snapshot.projects.slice(0, options.projectLimit).map((item) =>
     `- ${item.workspaceActive ? "[ACTIVE] " : ""}${item.name}: 会话 ${item.interactiveSessions}, 线程 ${item.hotThreads}, Agent ${item.backgroundAgents}`
   );
-  const warningLines = snapshot.warningEvents.slice(0, 3).map((item) =>
+  const warningLines = snapshot.warningEvents.slice(0, options.warningLimit).map((item) =>
     `- ${item.level} ${item.target}: ${item.body}`
   );
 
@@ -59,6 +67,10 @@ export function renderSnapshotText(snapshot: HudSnapshot): string {
   ].join("\n");
 }
 
+export function getHudHeight(options: RenderOptions): number {
+  return options.compact ? COMPACT_HEIGHT : FULL_HEIGHT;
+}
+
 function fitLine(content: string, columns: number): string {
   if (columns <= 0) {
     return content;
@@ -71,6 +83,15 @@ function fitLine(content: string, columns: number): string {
   return content.padEnd(columns, " ");
 }
 
-function applyStyle(content: string, colorCode: number): string {
-  return `\u001B[48;5;${colorCode}m\u001B[38;5;255m${content}\u001B[0m`;
+function applyStyle(content: string, theme: RenderOptions["theme"], lineIndex: number): string {
+  if (theme === "plain") {
+    return content;
+  }
+
+  const palette = theme === "amber"
+    ? [208, 214, 220]
+    : [45, 39, 31];
+
+  const background = palette[Math.min(lineIndex, palette.length - 1)];
+  return `\u001B[48;5;${background}m\u001B[38;5;255m${content}\u001B[0m`;
 }

@@ -19,7 +19,12 @@ async function main(): Promise<void> {
       if (options.rawJson) {
         process.stdout.write(`${JSON.stringify(snapshot, null, 2)}\n`);
       } else {
-        process.stdout.write(`${renderSnapshotText(snapshot)}\n`);
+        process.stdout.write(`${renderSnapshotText(snapshot, {
+          compact: options.compact,
+          theme: options.theme,
+          projectLimit: options.projectLimit,
+          warningLimit: options.warningLimit
+        })}\n`);
       }
       return;
     }

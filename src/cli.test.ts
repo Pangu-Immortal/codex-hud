@@ -6,13 +6,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseCli } from "./cli";
-import { renderHud } from "./render";
+import { getHudHeight, renderHud } from "./render";
 import type { HudSnapshot } from "./types";
 
 test("parseCli 能识别 snapshot json 参数", () => {
   const parsed = parseCli(["snapshot", "--json"]);
   assert.equal(parsed.command, "snapshot");
   assert.equal(parsed.rawJson, true);
+  assert.equal(parsed.theme, "cyan");
 });
 
 test("parseCli 能保留 run 子命令", () => {
@@ -41,6 +42,20 @@ test("renderHud 返回固定 3 行", () => {
     warningEvents: []
   };
 
-  const lines = renderHud(snapshot, 80);
+  const lines = renderHud(snapshot, 80, {
+    compact: false,
+    theme: "cyan",
+    projectLimit: 5,
+    warningLimit: 3
+  });
   assert.equal(lines.length, 3);
+});
+
+test("compact 模式返回 2 行 HUD", () => {
+  assert.equal(getHudHeight({
+    compact: true,
+    theme: "plain",
+    projectLimit: 3,
+    warningLimit: 2
+  }), 2);
 });

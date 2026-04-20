@@ -43,6 +43,12 @@ codex
   直接输出当前 `Codex` 状态快照
 - `codex-hud run -- codex`
   直接包裹交互式 Codex CLI，会在终端顶部保留 HUD
+- 支持紧凑模式与主题
+  - `--compact`
+  - `--theme cyan|amber|plain`
+- 支持输出限额
+  - `--project-limit`
+  - `--warning-limit`
 - 基于真实本地状态生成 HUD
   - `~/.codex/state_5.sqlite`
   - `~/.codex/logs_2.sqlite`
@@ -90,6 +96,12 @@ JSON 版本：
 npx tsx src/index.ts snapshot --json
 ```
 
+紧凑模式：
+
+```bash
+npx tsx src/index.ts snapshot --compact --theme plain
+```
+
 ### 2. 包裹 Codex 交互会话
 
 ```bash
@@ -112,6 +124,35 @@ npx tsx src/index.ts run -- codex "分析当前项目"
 
 ```bash
 npx tsx src/index.ts run -- --codex-home ~/.codex codex
+```
+
+紧凑 HUD：
+
+```bash
+codex-hud run --compact --theme amber -- codex
+```
+
+限制快照输出：
+
+```bash
+codex-hud snapshot --project-limit 3 --warning-limit 2
+```
+
+## 本地配置文件
+
+支持在用户目录下放一个 `~/.codex-hud.json`，避免每次都手写参数。
+
+示例：
+
+```json
+{
+  "refreshMs": 1200,
+  "hotThreadWindowMs": 900000,
+  "compact": false,
+  "theme": "cyan",
+  "projectLimit": 5,
+  "warningLimit": 3
+}
 ```
 
 ## 技术边界

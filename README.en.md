@@ -43,6 +43,12 @@ That is the actual target of `Codex HUD`.
   prints the current Codex status snapshot
 - `codex-hud run -- codex`
   wraps an interactive Codex CLI session and keeps a HUD at the top of the terminal
+- supports compact mode and themes
+  - `--compact`
+  - `--theme cyan|amber|plain`
+- supports output limits
+  - `--project-limit`
+  - `--warning-limit`
 - reads real local Codex state
   - `~/.codex/state_5.sqlite`
   - `~/.codex/logs_2.sqlite`
@@ -89,6 +95,12 @@ JSON mode:
 npx tsx src/index.ts snapshot --json
 ```
 
+Compact mode:
+
+```bash
+npx tsx src/index.ts snapshot --compact --theme plain
+```
+
 ### 2. Wrap an interactive Codex session
 
 ```bash
@@ -111,6 +123,35 @@ With a custom `codex home`:
 
 ```bash
 npx tsx src/index.ts run -- --codex-home ~/.codex codex
+```
+
+Compact HUD:
+
+```bash
+codex-hud run --compact --theme amber -- codex
+```
+
+Limit snapshot output:
+
+```bash
+codex-hud snapshot --project-limit 3 --warning-limit 2
+```
+
+## Local Config File
+
+You can place a `~/.codex-hud.json` file to avoid repeating the same flags.
+
+Example:
+
+```json
+{
+  "refreshMs": 1200,
+  "hotThreadWindowMs": 900000,
+  "compact": false,
+  "theme": "cyan",
+  "projectLimit": 5,
+  "warningLimit": 3
+}
 ```
 
 ## Technical Boundary
