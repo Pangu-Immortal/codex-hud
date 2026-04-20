@@ -68,6 +68,14 @@ npm install
 npm run build
 ```
 
+### 全局安装
+
+```bash
+npm install -g .
+codex-hud snapshot
+codex-hud run -- codex
+```
+
 ## 使用方式
 
 ### 1. 看当前快照
@@ -86,6 +94,12 @@ npx tsx src/index.ts snapshot --json
 
 ```bash
 npx tsx src/index.ts run -- codex
+```
+
+如果已经全局安装：
+
+```bash
+codex-hud run -- codex
 ```
 
 带初始提示词：

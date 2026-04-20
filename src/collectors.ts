@@ -6,6 +6,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import initSqlJs from "sql.js";
 import psList from "ps-list";
 import type { Database, SqlJsStatic } from "sql.js";
@@ -18,12 +20,14 @@ import type {
 } from "./types";
 
 let sqlRuntimePromise: Promise<SqlJsStatic> | null = null;
+const execFileAsync = promisify(execFile);
 
 export async function collectHudSnapshot(
   codexHome: string,
   hotThreadWindowMs: number,
   workspace: string
 ): Promise<HudSnapshot> {
+  const activeWorkspaceRoots = collectActiveWorkspaceRoots(path.join(codexHome, ".codex-global-state.json"));
   const processes = await collectProcesses();
   const threads = await collectThreads(path.join(codexHome, "state_5.sqlite"));
   const backgroundAgents = await collectBackgroundAgentCount(path.join(codexHome, "state_5.sqlite"), hotThreadWindowMs);
@@ -31,7 +35,8 @@ export async function collectHudSnapshot(
   const recentTools = collectRecentTools(path.join(codexHome, "log", "codex-tui.log"));
   const hotThresholdMs = Date.now() - hotThreadWindowMs;
   const hotThreads = threads.filter((item) => item.updatedAtMs >= hotThresholdMs);
-  const projects = buildProjects(processes, hotThreads, backgroundAgents.byPath);
+  const threadsForProjects = hotThreads.length > 0 ? hotThreads : threads.slice(0, 12);
+  const projects = buildProjects(processes, threadsForProjects, backgroundAgents.byPath, activeWorkspaceRoots);
   const warningCount = warningEvents.filter((item) => item.level.toUpperCase() === "WARN").length;
   const errorCount = warningEvents.filter((item) => item.level.toUpperCase() === "ERROR").length;
   const mostRecentThread = hotThreads[0] ?? threads[0] ?? null;
@@ -40,6 +45,7 @@ export async function collectHudSnapshot(
     workspace,
     codexHome,
     generatedAtMs: Date.now(),
+    activeWorkspaceRoots,
     interactiveSessions: processes.filter((item) => item.kind === "interactive").length,
     appServers: processes.filter((item) => item.kind === "app-server").length,
     backgroundAgents: backgroundAgents.total,
@@ -57,26 +63,31 @@ export async function collectHudSnapshot(
 
 async function collectProcesses(): Promise<ProcessSnapshot[]> {
   const listed = await psList();
-  return listed
-    .filter((item) => {
-      const normalizedCommand = `${item.name} ${item.cmd ?? ""}`.trim();
-      return isRealCodexProcess(item.name, normalizedCommand);
-    })
-    .map((item) => {
-      const normalizedCommand = `${item.name} ${item.cmd ?? ""}`.trim();
-      const lowerCommand = normalizedCommand.toLowerCase();
-      const isAppServer = lowerCommand.includes("app-server");
-      const cwd = extractCwdFromCommand(normalizedCommand);
-      return {
-        pid: item.pid,
-        cpu: item.cpu ?? 0,
-        memory: item.memory ?? 0,
-        startedAtText: item.started ?? item.ppid?.toString() ?? "",
-        command: normalizedCommand,
-        cwd,
-        kind: isAppServer ? "app-server" : "interactive"
-      };
-    })
+  const resolvedEntries = await Promise.all(
+    listed
+      .filter((item) => {
+        const normalizedCommand = `${item.name} ${item.cmd ?? ""}`.trim();
+        return isRealCodexProcess(item.name, normalizedCommand);
+      })
+      .map(async (item) => {
+        const normalizedCommand = `${item.name} ${item.cmd ?? ""}`.trim();
+        const lowerCommand = normalizedCommand.toLowerCase();
+        const isAppServer = lowerCommand.includes("app-server");
+        const cwd = await resolveWorkingDirectory(item.pid, normalizedCommand);
+        return {
+          pid: item.pid,
+          parentPid: item.ppid ?? null,
+          cpu: item.cpu ?? 0,
+          memory: item.memory ?? 0,
+          startedAtText: item.started ?? item.ppid?.toString() ?? "",
+          command: normalizedCommand,
+          cwd,
+          kind: isAppServer ? "app-server" as const : "interactive" as const
+        };
+      })
+  );
+
+  return dedupeProcesses(resolvedEntries)
     .sort((left, right) => right.pid - left.pid);
 }
 
@@ -215,9 +226,11 @@ function collectRecentTools(logPath: string): string[] {
 function buildProjects(
   processes: ProcessSnapshot[],
   threads: ThreadSnapshot[],
-  backgroundAgentsByPath: Map<string, number>
+  backgroundAgentsByPath: Map<string, number>,
+  activeWorkspaceRoots: string[]
 ): ProjectSnapshot[] {
   const grouped = new Map<string, ProjectAccumulator>();
+  const activeWorkspaceSet = new Set(activeWorkspaceRoots);
 
   for (const process of processes) {
     if (!process.cwd) {
@@ -255,6 +268,7 @@ function buildProjects(
     .map((item) => ({
       path: item.path,
       name: path.basename(item.path) || item.path,
+      workspaceActive: activeWorkspaceSet.has(item.path),
       interactiveSessions: item.interactiveSessions,
       hotThreads: item.hotThreads,
       backgroundAgents: item.backgroundAgents,
@@ -277,6 +291,10 @@ function isRealCodexProcess(name: string, command: string): boolean {
     return false;
   }
 
+  if (lowerName === "node" && (lowerCommand.includes(`${path.sep}bin${path.sep}codex`) || lowerCommand.includes("\\bin\\codex"))) {
+    return false;
+  }
+
   if (lowerCommand.includes("codex app-server")) {
     return true;
   }
@@ -290,6 +308,83 @@ function isRealCodexProcess(name: string, command: string): boolean {
   }
 
   return /(^|[\s/\\])codex(\.exe)?($|[\s"])/i.test(command);
+}
+
+function collectActiveWorkspaceRoots(globalStatePath: string): string[] {
+  if (!fs.existsSync(globalStatePath)) {
+    return [];
+  }
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(globalStatePath, "utf8")) as {
+      ["active-workspace-roots"]?: unknown;
+    };
+    const roots = raw["active-workspace-roots"];
+    if (!Array.isArray(roots)) {
+      return [];
+    }
+    return roots.filter((item): item is string => typeof item === "string");
+  } catch {
+    return [];
+  }
+}
+
+async function resolveWorkingDirectory(pid: number, command: string): Promise<string | null> {
+  const byProc = resolveWorkingDirectoryFromProc(pid);
+  if (byProc) {
+    return byProc;
+  }
+
+  const byLsof = await resolveWorkingDirectoryFromLsof(pid);
+  if (byLsof) {
+    return byLsof;
+  }
+
+  return extractCwdFromCommand(command);
+}
+
+function resolveWorkingDirectoryFromProc(pid: number): string | null {
+  if (process.platform !== "linux") {
+    return null;
+  }
+
+  try {
+    return fs.realpathSync(`/proc/${pid}/cwd`);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveWorkingDirectoryFromLsof(pid: number): Promise<string | null> {
+  if (process.platform !== "darwin") {
+    return null;
+  }
+
+  try {
+    const { stdout } = await execFileAsync("/usr/sbin/lsof", ["-a", "-d", "cwd", "-p", String(pid), "-Fn"]);
+    const line = stdout
+      .split("\n")
+      .find((item) => item.startsWith("n"));
+    return line ? line.slice(1) : null;
+  } catch {
+    return null;
+  }
+}
+
+function dedupeProcesses(processes: ProcessSnapshot[]): ProcessSnapshot[] {
+  const pidSet = new Set(processes.map((item) => item.pid));
+  return processes.filter((item) => {
+    if (item.kind !== "interactive") {
+      return true;
+    }
+    if (!item.parentPid) {
+      return true;
+    }
+    if (!pidSet.has(item.parentPid)) {
+      return true;
+    }
+    return !item.command.toLowerCase().includes(`${path.sep}codex${path.sep}codex`);
+  });
 }
 
 function createAccumulator(targetPath: string): ProjectAccumulator {

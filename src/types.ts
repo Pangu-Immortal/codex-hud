@@ -14,6 +14,7 @@ export interface CliOptions {
 
 export interface ProcessSnapshot {
   pid: number;
+  parentPid: number | null;
   cpu: number;
   memory: number;
   startedAtText: string;
@@ -41,6 +42,7 @@ export interface WarningSnapshot {
 export interface ProjectSnapshot {
   path: string;
   name: string;
+  workspaceActive: boolean;
   interactiveSessions: number;
   hotThreads: number;
   backgroundAgents: number;
@@ -53,6 +55,7 @@ export interface HudSnapshot {
   workspace: string;
   codexHome: string;
   generatedAtMs: number;
+  activeWorkspaceRoots: string[];
   interactiveSessions: number;
   appServers: number;
   backgroundAgents: number;

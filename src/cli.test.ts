@@ -26,6 +26,7 @@ test("renderHud 返回固定 3 行", () => {
     workspace: "/tmp/project",
     codexHome: "/tmp/.codex",
     generatedAtMs: Date.now(),
+    activeWorkspaceRoots: ["/tmp/project"],
     interactiveSessions: 2,
     appServers: 1,
     backgroundAgents: 1,

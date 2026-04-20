@@ -34,7 +34,7 @@ export function renderHud(snapshot: HudSnapshot, terminalColumns: number): strin
 
 export function renderSnapshotText(snapshot: HudSnapshot): string {
   const projectLines = snapshot.projects.slice(0, 5).map((item) =>
-    `- ${item.name}: 会话 ${item.interactiveSessions}, 线程 ${item.hotThreads}, Agent ${item.backgroundAgents}`
+    `- ${item.workspaceActive ? "[ACTIVE] " : ""}${item.name}: 会话 ${item.interactiveSessions}, 线程 ${item.hotThreads}, Agent ${item.backgroundAgents}`
   );
   const warningLines = snapshot.warningEvents.slice(0, 3).map((item) =>
     `- ${item.level} ${item.target}: ${item.body}`
@@ -44,6 +44,7 @@ export function renderSnapshotText(snapshot: HudSnapshot): string {
     "[Codex HUD Snapshot]",
     `workspace: ${snapshot.workspace}`,
     `codexHome: ${snapshot.codexHome}`,
+    `activeWorkspaceRoots: ${snapshot.activeWorkspaceRoots.length}`,
     `interactiveSessions: ${snapshot.interactiveSessions}`,
     `backgroundAgents: ${snapshot.backgroundAgents}`,
     `hotThreads: ${snapshot.hotThreads}`,

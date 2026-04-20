@@ -67,6 +67,14 @@ npm install
 npm run build
 ```
 
+### Global Install
+
+```bash
+npm install -g .
+codex-hud snapshot
+codex-hud run -- codex
+```
+
 ## Usage
 
 ### 1. Print a snapshot
@@ -85,6 +93,12 @@ npx tsx src/index.ts snapshot --json
 
 ```bash
 npx tsx src/index.ts run -- codex
+```
+
+If installed globally:
+
+```bash
+codex-hud run -- codex
 ```
 
 With an initial prompt:

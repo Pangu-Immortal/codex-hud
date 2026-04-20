@@ -3,8 +3,14 @@
   "version": "0.2.0",
   "description": "Cross-platform terminal HUD wrapper for Codex CLI",
   "license": "MIT",
+  "files": [
+    "dist/",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
   "bin": {
-    "codex-hud": "dist/index.cjs"
+    "codex-hud": "dist/index.js"
   },
   "type": "commonjs",
   "engines": {
@@ -15,7 +21,8 @@
     "dev": "tsx src/index.ts",
     "snapshot": "tsx src/index.ts snapshot",
     "start": "tsx src/index.ts run -- codex",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "ps-list": "^9.0.0",
