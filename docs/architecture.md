@@ -58,6 +58,20 @@ That snapshot is the single source of truth for:
 - diagnostics export
 - marketing screenshot generation
 
+### 6. Preferences Layer
+
+Files:
+
+- `Sources/CodexHUD/DashboardPreferences.swift`
+- `Sources/CodexHUD/AppModel.swift`
+
+Responsibilities:
+
+- persist local display settings with `UserDefaults`
+- control refresh interval and hot thread window
+- filter project scope and warning severity
+- cap visible item counts for each section
+
 ## Why Not Use One Source?
 
 Because “what Codex is doing right now” is spread across multiple local surfaces.

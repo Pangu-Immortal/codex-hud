@@ -5,11 +5,13 @@ import SwiftUI
 
 struct DashboardView: View {
     @ObservedObject var store: DashboardStore
+    @ObservedObject var preferences: DashboardPreferences
     let showsFooterActions: Bool
 
     var body: some View {
         DashboardSurfaceView(
             snapshot: store.snapshot,
+            configuration: preferences.snapshot,
             errorMessage: store.lastErrorMessage,
             showsFooterActions: showsFooterActions,
             isRefreshing: store.isRefreshing,
@@ -28,6 +30,9 @@ struct DashboardView: View {
             onOpenProject: { project in
                 store.openProject(project)
             },
+            onOpenSettings: {
+                store.openSettings()
+            },
             onQuit: {
                 store.quit()
             }
@@ -40,6 +45,7 @@ struct DashboardView: View {
 
 struct DashboardSurfaceView: View {
     let snapshot: DashboardSnapshot
+    let configuration: DashboardConfiguration
     let errorMessage: String?
     let showsFooterActions: Bool
     let isRefreshing: Bool
@@ -48,7 +54,37 @@ struct DashboardSurfaceView: View {
     let onOpenCodexHome: () -> Void
     let onOpenRepository: () -> Void
     let onOpenProject: (ProjectSnapshot) -> Void
+    let onOpenSettings: () -> Void
     let onQuit: () -> Void
+
+    private var visibleProjects: [ProjectSnapshot] {
+        let projects: [ProjectSnapshot]
+        switch configuration.projectScope {
+        case .all:
+            projects = snapshot.projects
+        case .activeWorkspaceOnly:
+            projects = snapshot.projects.filter(\.workspaceActive)
+        }
+
+        return Array(projects.prefix(configuration.maxVisibleProjects))
+    }
+
+    private var visibleProcesses: [CodexProcess] {
+        Array(snapshot.processes.prefix(configuration.maxVisibleProcesses))
+    }
+
+    private var visibleThreads: [CodexThread] {
+        Array(snapshot.hotThreads.prefix(configuration.maxVisibleThreads))
+    }
+
+    private var visibleSignals: [ActivitySignal] {
+        Array(snapshot.activitySignals.prefix(configuration.maxVisibleSignals))
+    }
+
+    private var visibleWarnings: [CodexLogEvent] {
+        let filtered = snapshot.recentWarnings.filter { configuration.warningFilter.matches($0) }
+        return Array(filtered.prefix(configuration.maxVisibleWarnings))
+    }
 
     var body: some View {
         ZStack {
@@ -67,6 +103,7 @@ struct DashboardSurfaceView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     headerSection
+                    currentViewSection
                     metricsSection
                     projectsSection
                     processesSection
@@ -162,13 +199,17 @@ struct DashboardSurfaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("项目视图")
 
-            ForEach(snapshot.projects) { project in
-                Button {
-                    onOpenProject(project)
-                } label: {
-                    ProjectCard(project: project)
+            if visibleProjects.isEmpty {
+                EmptyStateCard(text: configuration.projectScope == .activeWorkspaceOnly ? "当前没有匹配“活跃工作区”的项目。" : "当前还没有项目活动。")
+            } else {
+                ForEach(visibleProjects) { project in
+                    Button {
+                        onOpenProject(project)
+                    } label: {
+                        ProjectCard(project: project)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -177,10 +218,10 @@ struct DashboardSurfaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("运行进程")
 
-            if snapshot.processes.isEmpty {
+            if visibleProcesses.isEmpty {
                 EmptyStateCard(text: "未发现正在运行的 Codex 进程。")
             } else {
-                ForEach(snapshot.processes.prefix(6)) { process in
+                ForEach(visibleProcesses) { process in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: process.kind == .interactive ? "terminal.fill" : "server.rack")
                             .font(.system(size: 14, weight: .bold))
@@ -214,10 +255,10 @@ struct DashboardSurfaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("热点线程")
 
-            if snapshot.hotThreads.isEmpty {
+            if visibleThreads.isEmpty {
                 EmptyStateCard(text: "最近没有热点线程。")
             } else {
-                ForEach(snapshot.hotThreads.prefix(6)) { thread in
+                ForEach(visibleThreads) { thread in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top) {
                             Text(thread.title)
@@ -257,10 +298,10 @@ struct DashboardSurfaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("实时信号流")
 
-            if snapshot.activitySignals.isEmpty {
+            if visibleSignals.isEmpty {
                 EmptyStateCard(text: "还没有足够的活动信号。")
             } else {
-                ForEach(snapshot.activitySignals.prefix(8)) { signal in
+                ForEach(visibleSignals) { signal in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: Formatters.signalIcon(signal.kind))
                             .font(.system(size: 14, weight: .bold))
@@ -295,10 +336,10 @@ struct DashboardSurfaceView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("最近告警")
 
-            if snapshot.recentWarnings.isEmpty {
-                EmptyStateCard(text: "最近日志中没有 WARN 或 ERROR。")
+            if visibleWarnings.isEmpty {
+                EmptyStateCard(text: configuration.warningFilter == .all ? "最近日志中没有 WARN 或 ERROR。" : "当前筛选条件下没有匹配的告警。")
             } else {
-                ForEach(snapshot.recentWarnings.prefix(5)) { warning in
+                ForEach(visibleWarnings) { warning in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("\(warning.level.uppercased()) · \(warning.target)")
@@ -348,10 +389,32 @@ struct DashboardSurfaceView: View {
             }
 
             HStack(spacing: 10) {
+                ActionButton(title: "设置", icon: "gearshape.fill", accent: .indigo, action: onOpenSettings)
                 ActionButton(title: "打开 .codex", icon: "folder.fill", accent: .green, action: onOpenCodexHome)
+            }
+
+            HStack(spacing: 10) {
                 ActionButton(title: "项目仓库", icon: "link", accent: .purple, action: onOpenRepository)
                 ActionButton(title: "退出", icon: "power", accent: .red, action: onQuit)
             }
+        }
+    }
+
+    private var currentViewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("当前视图")
+
+            HStack(spacing: 8) {
+                TinyBadge(text: "刷新 \(Int(configuration.refreshIntervalSeconds))s", color: Color(red: 0.18, green: 0.59, blue: 0.95))
+                TinyBadge(text: "窗口 \(Int(configuration.hotThreadWindowSeconds / 60))m", color: Color(red: 0.44, green: 0.35, blue: 0.95))
+                TinyBadge(text: configuration.projectScope.title, color: Color(red: 0.11, green: 0.68, blue: 0.57))
+                TinyBadge(text: configuration.warningFilter.title, color: Color(red: 0.95, green: 0.52, blue: 0.18))
+            }
+
+            Text("数据目录：\(Formatters.pathTail(snapshot.codexHomePath, maxComponents: 3))")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.62))
+                .padding(.horizontal, 4)
         }
     }
 

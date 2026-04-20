@@ -11,6 +11,7 @@ enum ScreenshotRenderer {
         // 关键逻辑：营销截图关闭底部动作区，避免和真实菜单操作混淆。
         let view = DashboardSurfaceView(
             snapshot: snapshot,
+            configuration: .defaults,
             errorMessage: nil,
             showsFooterActions: false,
             isRefreshing: false,
@@ -19,6 +20,7 @@ enum ScreenshotRenderer {
             onOpenCodexHome: {},
             onOpenRepository: {},
             onOpenProject: { _ in },
+            onOpenSettings: {},
             onQuit: {}
         )
         .frame(width: 1220, height: 1540, alignment: .topLeading)

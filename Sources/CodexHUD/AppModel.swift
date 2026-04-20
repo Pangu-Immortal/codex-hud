@@ -13,14 +13,14 @@ final class DashboardStore: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var isRefreshing = false
 
-    private let runtime: AppRuntime
-    private let snapshotBuilder: CodexSnapshotBuilder
+    private let baseRuntime: AppRuntime
+    private let preferences: DashboardPreferences
     private var refreshTask: Task<Void, Never>?
     private var hasStarted = false
 
-    init(runtime: AppRuntime) {
-        self.runtime = runtime
-        snapshotBuilder = CodexSnapshotBuilder(runtime: runtime)
+    init(runtime: AppRuntime, preferences: DashboardPreferences) {
+        baseRuntime = runtime
+        self.preferences = preferences
     }
 
     deinit {
@@ -41,7 +41,7 @@ final class DashboardStore: ObservableObject {
             await refreshNow()
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: .seconds(runtime.refreshIntervalSeconds))
+                    try await Task.sleep(for: .seconds(preferences.snapshot.refreshIntervalSeconds))
                 } catch {
                     break
                 }
@@ -60,7 +60,7 @@ final class DashboardStore: ObservableObject {
 
         do {
             // 关键逻辑：将阻塞 IO 迁移到后台线程，避免菜单栏动画卡顿。
-            let runtime = self.runtime
+            let runtime = baseRuntime.applying(preferences.snapshot)
             let newSnapshot = try await Task.detached(priority: .utility) {
                 try CodexSnapshotBuilder(runtime: runtime).loadSnapshot()
             }.value
@@ -83,7 +83,12 @@ final class DashboardStore: ObservableObject {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(snapshot)
+            let exportPayload = DiagnosticExportPayload(
+                exportedAt: .now,
+                configuration: preferences.snapshot,
+                snapshot: snapshot
+            )
+            let data = try encoder.encode(exportPayload)
             try data.write(to: desktopURL, options: .atomic)
             lastErrorMessage = "诊断已导出到：\(desktopURL.path)"
         } catch {
@@ -92,7 +97,8 @@ final class DashboardStore: ObservableObject {
     }
 
     func openCodexHome() {
-        NSWorkspace.shared.open(runtime.codexHome)
+        let effectiveRuntime = baseRuntime.applying(preferences.snapshot)
+        NSWorkspace.shared.open(effectiveRuntime.codexHome)
     }
 
     func openProject(_ project: ProjectSnapshot) {
@@ -103,6 +109,12 @@ final class DashboardStore: ObservableObject {
         if let repositoryURL = URL(string: "https://github.com/Pangu-Immortal/codex-hud") {
             NSWorkspace.shared.open(repositoryURL)
         }
+    }
+
+    func openSettings() {
+        // 关键逻辑：直接触发系统设置窗口命令，避免在菜单栏里再造一套弹层设置。
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func quit() {

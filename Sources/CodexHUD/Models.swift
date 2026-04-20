@@ -10,6 +10,18 @@ struct AppRuntime: Sendable {
     let refreshIntervalSeconds: TimeInterval
     let hotThreadWindowSeconds: TimeInterval
 
+    init(
+        codexHome: URL,
+        screenshotOutputURL: URL?,
+        refreshIntervalSeconds: TimeInterval,
+        hotThreadWindowSeconds: TimeInterval
+    ) {
+        self.codexHome = codexHome
+        self.screenshotOutputURL = screenshotOutputURL
+        self.refreshIntervalSeconds = refreshIntervalSeconds
+        self.hotThreadWindowSeconds = hotThreadWindowSeconds
+    }
+
     init(arguments: [String]) {
         var mutableCodexHome = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex")
         var mutableScreenshotOutputURL: URL?
@@ -46,6 +58,24 @@ struct AppRuntime: Sendable {
         screenshotOutputURL = mutableScreenshotOutputURL
         refreshIntervalSeconds = mutableRefreshIntervalSeconds
         hotThreadWindowSeconds = mutableHotThreadWindowSeconds
+    }
+
+    func applying(_ configuration: DashboardConfiguration) -> AppRuntime {
+        // 关键逻辑：命令行截图输出保持不变，仅允许设置项覆盖数据目录、刷新间隔和热点窗口。
+        let trimmedOverridePath = configuration.codexHomePathOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveCodexHome: URL
+        if trimmedOverridePath.isEmpty {
+            effectiveCodexHome = codexHome
+        } else {
+            effectiveCodexHome = URL(fileURLWithPath: trimmedOverridePath).standardizedFileURL
+        }
+
+        return AppRuntime(
+            codexHome: effectiveCodexHome,
+            screenshotOutputURL: screenshotOutputURL,
+            refreshIntervalSeconds: configuration.refreshIntervalSeconds,
+            hotThreadWindowSeconds: configuration.hotThreadWindowSeconds
+        )
     }
 }
 
@@ -338,4 +368,82 @@ enum ActivitySignalKind: String, Codable, Equatable {
 struct CodexGlobalState: Codable, Equatable {
     let activeWorkspaceRoots: [String]
     let projectOrder: [String]
+}
+
+struct DashboardConfiguration: Codable, Equatable, Sendable {
+    let codexHomePathOverride: String
+    let refreshIntervalSeconds: TimeInterval
+    let hotThreadWindowSeconds: TimeInterval
+    let projectScope: DashboardProjectScope
+    let warningFilter: DashboardWarningFilter
+    let maxVisibleProjects: Int
+    let maxVisibleProcesses: Int
+    let maxVisibleThreads: Int
+    let maxVisibleSignals: Int
+    let maxVisibleWarnings: Int
+
+    static let defaults = DashboardConfiguration(
+        codexHomePathOverride: "",
+        refreshIntervalSeconds: 5,
+        hotThreadWindowSeconds: 15 * 60,
+        projectScope: .all,
+        warningFilter: .all,
+        maxVisibleProjects: 6,
+        maxVisibleProcesses: 6,
+        maxVisibleThreads: 6,
+        maxVisibleSignals: 8,
+        maxVisibleWarnings: 5
+    )
+}
+
+enum DashboardProjectScope: String, Codable, CaseIterable, Sendable, Identifiable {
+    case all
+    case activeWorkspaceOnly
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "全部项目"
+        case .activeWorkspaceOnly:
+            return "仅活跃工作区"
+        }
+    }
+}
+
+enum DashboardWarningFilter: String, Codable, CaseIterable, Sendable, Identifiable {
+    case all
+    case warningsOnly
+    case errorsOnly
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "WARN + ERROR"
+        case .warningsOnly:
+            return "仅 WARN"
+        case .errorsOnly:
+            return "仅 ERROR"
+        }
+    }
+
+    func matches(_ event: CodexLogEvent) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .warningsOnly:
+            return event.level.uppercased() == "WARN"
+        case .errorsOnly:
+            return event.level.uppercased() == "ERROR"
+        }
+    }
+}
+
+struct DiagnosticExportPayload: Codable, Equatable {
+    let exportedAt: Date
+    let configuration: DashboardConfiguration
+    let snapshot: DashboardSnapshot
 }
